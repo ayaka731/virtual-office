@@ -103,32 +103,79 @@ async function postToNote() {
 
   const page = await context.newPage();
 
+  // スクリーンショット保存ヘルパー
+  const logsDir = path.join(__dirname, '..', 'logs');
+  fs.mkdirSync(logsDir, { recursive: true });
+  async function saveScreenshot(name) {
+    const ssPath = path.join(logsDir, `${name}.png`);
+    try {
+      await page.screenshot({ path: ssPath, fullPage: true });
+      console.log(`📸 スクリーンショット保存: ${ssPath}`);
+    } catch (e) {
+      console.log(`⚠️  スクリーンショット保存失敗: ${e.message}`);
+    }
+  }
+
   try {
     // ── 1. ログイン ──
     console.log('🔐 noteにログイン中...');
-    await page.goto('https://note.com/login', { waitUntil: 'networkidle' });
+    await page.goto('https://note.com/login', { waitUntil: 'networkidle', timeout: 30000 });
+    await saveScreenshot('01-login-page');
+
+    // メールアドレスでログインのボタン/リンクをクリック（選択画面が表示される場合）
+    const emailLoginSelectors = [
+      'button:has-text("メールアドレスでログイン")',
+      'a:has-text("メールアドレスでログイン")',
+      'button:has-text("メールアドレス")',
+      'a:has-text("メールアドレス")',
+      'button:has-text("メール")',
+      'a:has-text("メール")',
+      '[data-type="email"]',
+      'button:has-text("mail")',
+      'a:has-text("mail")',
+    ];
+
+    for (const sel of emailLoginSelectors) {
+      try {
+        const el = page.locator(sel).first();
+        if (await el.isVisible({ timeout: 2000 })) {
+          console.log(`✅ メールログインボタン発見: ${sel}`);
+          await el.click();
+          await page.waitForTimeout(1500);
+          await saveScreenshot('02-after-email-button');
+          break;
+        }
+      } catch (e) {}
+    }
+
+    // メールアドレス入力欄が表示されるまで待つ
+    console.log('⏳ メール入力欄を待機中...');
+    await page.waitForSelector('input[type="email"], input[name="email"]', { timeout: 30000 });
+    await saveScreenshot('03-email-input-visible');
 
     // メールアドレス入力
-    await page.waitForSelector('input[type="email"], input[name="email"]', { timeout: 10000 });
     await page.fill('input[type="email"], input[name="email"]', EMAIL);
+    console.log('✅ メールアドレス入力完了');
+    await saveScreenshot('04-email-filled');
 
     // パスワード入力
     await page.fill('input[type="password"]', PASSWORD);
+    console.log('✅ パスワード入力完了');
+    await saveScreenshot('05-password-filled');
 
     // ログインボタンクリック
     await page.click('button[type="submit"]');
-    await page.waitForNavigation({ waitUntil: 'networkidle', timeout: 15000 });
+    console.log('✅ ログインボタンクリック');
+    await page.waitForNavigation({ waitUntil: 'networkidle', timeout: 30000 });
+    await saveScreenshot('06-after-login');
 
     // ログイン確認
     const currentUrl = page.url();
     if (currentUrl.includes('/login')) {
-      const ssPath = path.join(__dirname, '..', 'logs', 'error-screenshot.png');
-      fs.mkdirSync(path.dirname(ssPath), { recursive: true });
-      await page.screenshot({ path: ssPath, fullPage: true });
+      await saveScreenshot('login-failed');
       console.error('❌ ログイン失敗: メールアドレスまたはパスワードが正しくありません');
       console.error('   現在のURL:', currentUrl);
       console.error('   GitHub Secrets の NOTE_EMAIL / NOTE_PASSWORD の値を確認してください');
-      console.error('   📸 スクリーンショット保存:', ssPath);
       throw new Error('ログイン失敗: 認証情報を確認してください（スクリーンショット保存済み）');
     }
     console.log('✅ ログイン成功');
@@ -274,11 +321,8 @@ async function postToNote() {
 
   } catch (err) {
     // スクリーンショットを保存してデバッグ用に
-    const ssPath = path.join(__dirname, '..', 'logs', 'error-screenshot.png');
     try {
-      fs.mkdirSync(path.dirname(ssPath), { recursive: true });
-      await page.screenshot({ path: ssPath, fullPage: true });
-      console.error('📸 スクリーンショット保存:', ssPath);
+      await saveScreenshot('error-screenshot');
     } catch (ssErr) {
       console.error('⚠️  スクリーンショット保存失敗:', ssErr.message);
     }
