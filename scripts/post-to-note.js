@@ -12,12 +12,35 @@ const EMAIL    = process.env.NOTE_EMAIL;
 const PASSWORD = process.env.NOTE_PASSWORD;
 const MD_FILE  = process.argv[2];
 
-if (!EMAIL || !PASSWORD) {
-  console.error('❌ 環境変数 NOTE_EMAIL と NOTE_PASSWORD を設定してください');
+if (!EMAIL && !PASSWORD) {
+  console.error('❌ 環境変数 NOTE_EMAIL と NOTE_PASSWORD が設定されていません');
+  console.error('   GitHub Secrets に NOTE_EMAIL / NOTE_PASSWORD を登録してください');
   process.exit(1);
 }
-if (!MD_FILE || !fs.existsSync(MD_FILE)) {
-  console.error('❌ markdownファイルが見つかりません:', MD_FILE);
+if (!EMAIL) {
+  console.error('❌ 環境変数 NOTE_EMAIL が設定されていません');
+  process.exit(1);
+}
+if (!PASSWORD) {
+  console.error('❌ 環境変数 NOTE_PASSWORD が設定されていません');
+  process.exit(1);
+}
+if (!MD_FILE) {
+  console.error('❌ 記事ファイルパスが指定されていません');
+  console.error('   使い方: node post-to-note.js <mdファイルパス>');
+  console.error('   例: node post-to-note.js ../output/drafts/2026-04-28/G1-001-note.md');
+  process.exit(1);
+}
+if (!fs.existsSync(MD_FILE)) {
+  console.error('❌ 記事ファイルが見つかりません:', MD_FILE);
+  console.error('   絶対パスまたは実行ディレクトリからの相対パスを確認してください');
+  const dir = path.dirname(MD_FILE);
+  if (fs.existsSync(dir)) {
+    const files = fs.readdirSync(dir);
+    console.error('   ディレクトリ内のファイル一覧:', files.join(', ') || '(空)');
+  } else {
+    console.error('   ディレクトリ自体が存在しません:', dir);
+  }
   process.exit(1);
 }
 
@@ -99,7 +122,14 @@ async function postToNote() {
     // ログイン確認
     const currentUrl = page.url();
     if (currentUrl.includes('/login')) {
-      throw new Error('ログイン失敗: 認証情報を確認してください');
+      const ssPath = path.join(__dirname, '..', 'logs', 'error-screenshot.png');
+      fs.mkdirSync(path.dirname(ssPath), { recursive: true });
+      await page.screenshot({ path: ssPath, fullPage: true });
+      console.error('❌ ログイン失敗: メールアドレスまたはパスワードが正しくありません');
+      console.error('   現在のURL:', currentUrl);
+      console.error('   GitHub Secrets の NOTE_EMAIL / NOTE_PASSWORD の値を確認してください');
+      console.error('   📸 スクリーンショット保存:', ssPath);
+      throw new Error('ログイン失敗: 認証情報を確認してください（スクリーンショット保存済み）');
     }
     console.log('✅ ログイン成功');
 
@@ -245,9 +275,14 @@ async function postToNote() {
   } catch (err) {
     // スクリーンショットを保存してデバッグ用に
     const ssPath = path.join(__dirname, '..', 'logs', 'error-screenshot.png');
-    await page.screenshot({ path: ssPath, fullPage: true });
+    try {
+      fs.mkdirSync(path.dirname(ssPath), { recursive: true });
+      await page.screenshot({ path: ssPath, fullPage: true });
+      console.error('📸 スクリーンショット保存:', ssPath);
+    } catch (ssErr) {
+      console.error('⚠️  スクリーンショット保存失敗:', ssErr.message);
+    }
     console.error('❌ エラー:', err.message);
-    console.error('📸 スクリーンショット保存:', ssPath);
     process.exit(1);
   } finally {
     await browser.close();
