@@ -119,55 +119,32 @@ async function postToNote() {
   try {
     // ── 1. ログイン ──
     console.log('🔐 noteにログイン中...');
-    await page.goto('https://note.com/login', { waitUntil: 'networkidle', timeout: 30000 });
+    // networkidle だとタイムアウトするため domcontentloaded を使用
+    await page.goto('https://note.com/login', { waitUntil: 'domcontentloaded', timeout: 30000 });
+    await page.waitForTimeout(3000);
     await saveScreenshot('01-login-page');
 
-    // メールアドレスでログインのボタン/リンクをクリック（選択画面が表示される場合）
-    const emailLoginSelectors = [
-      'button:has-text("メールアドレスでログイン")',
-      'a:has-text("メールアドレスでログイン")',
-      'button:has-text("メールアドレス")',
-      'a:has-text("メールアドレス")',
-      'button:has-text("メール")',
-      'a:has-text("メール")',
-      '[data-type="email"]',
-      'button:has-text("mail")',
-      'a:has-text("mail")',
-    ];
-
-    for (const sel of emailLoginSelectors) {
-      try {
-        const el = page.locator(sel).first();
-        if (await el.isVisible({ timeout: 2000 })) {
-          console.log(`✅ メールログインボタン発見: ${sel}`);
-          await el.click();
-          await page.waitForTimeout(1500);
-          await saveScreenshot('02-after-email-button');
-          break;
-        }
-      } catch (e) {}
-    }
-
-    // メールアドレス入力欄が表示されるまで待つ
+    // noteのログインページはメール・パスワード入力欄が直接表示される（選択画面なし）
+    // input#email は type="text"（type="email"ではない）
     console.log('⏳ メール入力欄を待機中...');
-    await page.waitForSelector('input[type="email"], input[name="email"]', { timeout: 30000 });
-    await saveScreenshot('03-email-input-visible');
+    await page.waitForSelector('#email', { timeout: 15000 });
+    await saveScreenshot('02-email-input-visible');
 
     // メールアドレス入力
-    await page.fill('input[type="email"], input[name="email"]', EMAIL);
+    await page.fill('#email', EMAIL);
     console.log('✅ メールアドレス入力完了');
-    await saveScreenshot('04-email-filled');
+    await saveScreenshot('03-email-filled');
 
     // パスワード入力
-    await page.fill('input[type="password"]', PASSWORD);
+    await page.fill('#password', PASSWORD);
     console.log('✅ パスワード入力完了');
-    await saveScreenshot('05-password-filled');
+    await saveScreenshot('04-password-filled');
 
-    // ログインボタンクリック
-    await page.click('button[type="submit"]');
+    // ログインボタンクリック（data-type="primary" のボタン）
+    await page.click('button[data-type="primary"]');
     console.log('✅ ログインボタンクリック');
-    await page.waitForNavigation({ waitUntil: 'networkidle', timeout: 30000 });
-    await saveScreenshot('06-after-login');
+    await page.waitForNavigation({ waitUntil: 'domcontentloaded', timeout: 30000 });
+    await saveScreenshot('05-after-login');
 
     // ログイン確認
     const currentUrl = page.url();
@@ -182,7 +159,7 @@ async function postToNote() {
 
     // ── 2. 新規記事ページへ ──
     console.log('📝 新規記事を作成中...');
-    await page.goto('https://note.com/notes/new', { waitUntil: 'networkidle' });
+    await page.goto('https://note.com/notes/new', { waitUntil: 'domcontentloaded' });
     await page.waitForTimeout(2000);
 
     // ── 3. タイトル入力 ──
