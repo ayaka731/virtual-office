@@ -1,0 +1,51 @@
+{
+  "note": {
+    "id": "yorushoku_500",
+    "name": "瑠璃",
+    "url": "https://note.com/yorushoku_500",
+    "api": null,
+    "postMethod": "manual",
+    "notes": "APIは限定的。当面は手動投稿 or ブラウザ自動操作"
+  },
+  "x": {
+    "id": "tinzhnglil15017",
+    "name": "瑠璃 / チャトレで500貯めた女",
+    "url": "https://x.com/tinzhnglil15017",
+    "api": {
+      "apiKey": "",
+      "apiSecret": "",
+      "accessToken": "",
+      "accessSecret": ""
+    },
+    "postMethod": "api",
+    "notes": "X API v2のキーを取得して上記に入力"
+  },
+  "instagram": {
+    "id": "ruri_yorushoku",
+    "name": "瑠璃",
+    "url": "https://instagram.com/ruri_yorushoku",
+    "api": {
+      "facebookAppId": "",
+      "graphApiToken": ""
+    },
+    "postMethod": "api",
+    "notes": "ビジネスアカウント + Facebook連携 + Graph APIトークンが必要"
+  },
+  "threads": {
+    "id": "ruri_yorushoku",
+    "url": "https://threads.net/@ruri_yorushoku",
+    "postMethod": "manual",
+    "notes": "Instagram連携アカウント"
+  },
+  "tiktok": {
+    "id": "",
+    "url": "",
+    "postMethod": "manual",
+    "notes": "アカウント未設定"
+  },
+  "litlink": {
+    "id": "honshitoro",
+    "url": "https://lit.link/honshitoro",
+    "notes": "プロフィールまとめページ"
+  }
+}

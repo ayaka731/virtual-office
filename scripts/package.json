@@ -1,0 +1,14 @@
+{
+  "name": "virtual-office-scripts",
+  "version": "1.0.0",
+  "description": "note自動投稿スクリプト",
+  "type": "commonjs",
+  "scripts": {
+    "post-note": "node post-to-note.js",
+    "install-browsers": "npx playwright install chromium"
+  },
+  "dependencies": {
+    "@playwright/test": "^1.44.0",
+    "playwright": "^1.44.0"
+  }
+}

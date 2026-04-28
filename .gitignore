@@ -1,0 +1,24 @@
+# 依存関係
+node_modules/
+dashboard/node_modules/
+telegram-bot/node_modules/
+scripts/node_modules/
+
+# 環境変数・認証情報
+.env
+.env.*
+config/affiliate-links.json
+telegram-bot/config.json
+
+# 出力・ログ（生成記事は除外）
+logs/
+output/drafts/
+output/published/
+output/reviewed/
+
+# macOS
+.DS_Store
+
+# Playwright
+test-results/
+playwright-report/

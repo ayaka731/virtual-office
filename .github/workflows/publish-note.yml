@@ -1,0 +1,97 @@
+name: note自動投稿
+
+on:
+  # 手動実行（記事ファイルパスを指定）
+  workflow_dispatch:
+    inputs:
+      article_path:
+        description: '投稿する記事ファイルのパス（例: output/drafts/2026-04-28/G1-001-note.md）'
+        required: true
+        type: string
+      dry_run:
+        description: 'ドライラン（実際には投稿しない）'
+        required: false
+        type: boolean
+        default: false
+
+  # output/drafts/ に新ファイルがpushされたとき（自動トリガー）
+  push:
+    paths:
+      - 'output/drafts/**/*-note.md'
+
+jobs:
+  post-to-note:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      # 1. リポジトリをチェックアウト
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # 2. Node.js セットアップ
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: scripts/package.json
+
+      # 3. 依存関係インストール
+      - name: Install dependencies
+        working-directory: scripts
+        run: npm install
+
+      # 4. Playwright (Chromium) インストール
+      - name: Install Playwright browsers
+        working-directory: scripts
+        run: npx playwright install chromium --with-deps
+
+      # 5. 投稿対象ファイルを決定
+      - name: Determine article file
+        id: article
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "path=${{ inputs.article_path }}" >> $GITHUB_OUTPUT
+          else
+            # pushトリガーの場合: 変更された *-note.md ファイルを自動検出
+            CHANGED=$(git diff --name-only HEAD~1 HEAD -- 'output/drafts/**/*-note.md' | head -1)
+            if [ -z "$CHANGED" ]; then
+              # 最新のnote.mdファイルを使用
+              CHANGED=$(find output/drafts -name '*-note.md' | sort -r | head -1)
+            fi
+            echo "path=$CHANGED" >> $GITHUB_OUTPUT
+          fi
+          echo "📄 投稿対象: ${{ steps.article.outputs.path }}"
+
+      # 6. ドライラン確認
+      - name: Dry run check
+        if: ${{ inputs.dry_run == true }}
+        run: |
+          echo "🔍 ドライランモード"
+          cat "${{ steps.article.outputs.path }}" | head -20
+          echo "---"
+          echo "実際の投稿はスキップしました。"
+          exit 0
+
+      # 7. note投稿実行
+      - name: Post to note
+        if: ${{ inputs.dry_run != true }}
+        env:
+          NOTE_EMAIL: ${{ secrets.NOTE_EMAIL }}
+          NOTE_PASSWORD: ${{ secrets.NOTE_PASSWORD }}
+        working-directory: scripts
+        run: |
+          node post-to-note.js "../${{ steps.article.outputs.path }}"
+
+      # 8. ログをアーティファクトとして保存
+      - name: Upload logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: note-post-logs-${{ github.run_id }}
+          path: |
+            logs/note-posts.json
+            logs/error-screenshot.png
+          if-no-files-found: ignore
+          retention-days: 30

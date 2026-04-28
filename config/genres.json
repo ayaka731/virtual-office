@@ -1,0 +1,45 @@
+{
+  "G1": {
+    "name": "チャトレ・メルレ アフィリエイト",
+    "description": "チャットレディ・メールレディ関連のアフィリエイト記事",
+    "target_audience": "20代後半〜40代女性、副業に興味がある層",
+    "monetization": "ASP経由アフィリエイト報酬",
+    "platforms": ["note", "x", "instagram", "tiktok"],
+    "posting_frequency": {
+      "note": "3/week",
+      "x": "1-3/day",
+      "instagram": "3/week",
+      "tiktok": "2/week"
+    },
+    "legal_sensitivity": "high",
+    "required_disclaimers": [
+      "※本記事にはアフィリエイトリンクが含まれます",
+      "※収入には個人差があります",
+      "※記載情報は記事作成時点のものです"
+    ]
+  },
+  "G2": {
+    "name": "Amazonアソシエイト",
+    "description": "Amazon商品紹介・レビュー記事",
+    "target_audience": "20代〜40代男女、購買意欲のある層",
+    "monetization": "Amazonアソシエイト紹介料",
+    "platforms": ["note", "x", "instagram", "tiktok"],
+    "posting_frequency": {
+      "note": "3/week",
+      "x": "1-3/day",
+      "instagram": "3/week",
+      "tiktok": "2/week"
+    },
+    "legal_sensitivity": "medium",
+    "required_disclaimers": [
+      "※本記事にはAmazonアソシエイトリンクが含まれます",
+      "※価格は記事作成時点のものです",
+      "※Amazon.co.jpアソシエイト"
+    ]
+  },
+  "G3": {
+    "name": "Amazon仲介売上",
+    "description": "後日追加予定",
+    "status": "pending"
+  }
+}
