@@ -93,12 +93,24 @@ async function postToNote() {
 
   const browser = await chromium.launch({
     headless: true,
-    args: ['--no-sandbox', '--disable-setuid-sandbox'],
+    args: [
+      '--no-sandbox',
+      '--disable-setuid-sandbox',
+      '--disable-blink-features=AutomationControlled',
+    ],
   });
 
   const context = await browser.newContext({
     userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
     viewport: { width: 1280, height: 800 },
+    extraHTTPHeaders: {
+      'Accept-Language': 'ja-JP,ja;q=0.9,en-US;q=0.8,en;q=0.7',
+    },
+  });
+
+  // webdriver フラグを隠す
+  await context.addInitScript(() => {
+    Object.defineProperty(navigator, 'webdriver', { get: () => false });
   });
 
   const page = await context.newPage();
@@ -119,31 +131,54 @@ async function postToNote() {
   try {
     // ── 1. ログイン ──
     console.log('🔐 noteにログイン中...');
-    // networkidle だとタイムアウトするため domcontentloaded を使用
     await page.goto('https://note.com/login', { waitUntil: 'domcontentloaded', timeout: 30000 });
-    await page.waitForTimeout(3000);
+    // JS描画を待つ
+    await page.waitForTimeout(5000);
     await saveScreenshot('01-login-page');
 
-    // noteのログインページはメール・パスワード入力欄が直接表示される（選択画面なし）
-    // input#email は type="text"（type="email"ではない）
+    // ページURL・タイトルをログ（CI環境でのリダイレクト確認用）
+    console.log('🔗 ページURL:', page.url());
+    console.log('📋 ページタイトル:', await page.title());
+
+    // ページHTMLを保存（CI環境でのデバッグ用）
+    const debugHtml = await page.content();
+    fs.writeFileSync(path.join(logsDir, 'ci-login-page.html'), debugHtml);
+    console.log(`📄 HTMLダンプ: ${debugHtml.length} bytes`);
+
+    // input一覧をログ
+    const inputsInfo = await page.$$eval('input', els =>
+      els.map(el => ({ type: el.type, id: el.id, name: el.name, placeholder: el.placeholder }))
+    );
+    console.log('🔍 input一覧:', JSON.stringify(inputsInfo));
+
+    // noteのログインページ: input#email (type="text") が直接表示される
+    // タイムアウトを長めに設定
     console.log('⏳ メール入力欄を待機中...');
-    await page.waitForSelector('#email', { timeout: 15000 });
+    await page.waitForSelector('#email', { state: 'visible', timeout: 20000 });
     await saveScreenshot('02-email-input-visible');
 
-    // メールアドレス入力
+    // メールアドレス入力（click→fill の二段階）
+    await page.click('#email');
     await page.fill('#email', EMAIL);
     console.log('✅ メールアドレス入力完了');
     await saveScreenshot('03-email-filled');
 
     // パスワード入力
+    await page.click('#password');
     await page.fill('#password', PASSWORD);
     console.log('✅ パスワード入力完了');
     await saveScreenshot('04-password-filled');
 
-    // ログインボタンクリック（data-type="primary" のボタン）
-    await page.click('button[data-type="primary"]');
+    // ログインボタンクリック（data-type="primary" のボタン or テキストで特定）
+    const loginBtn = page.locator('button[data-type="primary"], button.a-button:has-text("ログイン")').first();
+    await loginBtn.waitFor({ state: 'visible', timeout: 10000 });
+    await loginBtn.click();
     console.log('✅ ログインボタンクリック');
-    await page.waitForNavigation({ waitUntil: 'domcontentloaded', timeout: 30000 });
+    // navigation を Promise.race で処理（waitForNavigation がハングする場合の対策）
+    await Promise.race([
+      page.waitForNavigation({ waitUntil: 'domcontentloaded', timeout: 30000 }),
+      page.waitForTimeout(10000),
+    ]);
     await saveScreenshot('05-after-login');
 
     // ログイン確認

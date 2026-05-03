@@ -84,14 +84,13 @@ jobs:
         run: |
           node post-to-note.js "../${{ steps.article.outputs.path }}"
 
-      # 8. ログをアーティファクトとして保存
+      # 8. ログをアーティファクトとして保存（全スクリーンショット・HTMLダンプ含む）
       - name: Upload logs
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: note-post-logs-${{ github.run_id }}
           path: |
-            logs/note-posts.json
-            logs/error-screenshot.png
+            logs/
           if-no-files-found: ignore
           retention-days: 30
