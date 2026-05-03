@@ -178,76 +178,48 @@ async function postToNote() {
 
     // ── 2. 新規記事ページへ ──
     console.log('📝 新規記事を作成中...');
-    await page.goto('https://note.com/notes/new', { waitUntil: 'domcontentloaded' });
-    await page.waitForTimeout(2000);
+    await page.goto('https://note.com/notes/new', { waitUntil: 'domcontentloaded', timeout: 60000 });
+    // エディタのJSが完全に読み込まれるまで networkidle を待つ（最大30秒）
+    await Promise.race([
+      page.waitForLoadState('networkidle', { timeout: 30000 }),
+      page.waitForTimeout(15000),
+    ]);
+    await saveScreenshot('editor-loaded');
+
+    // エディタが表示されるまで待機（最大60秒）
+    console.log('⏳ エディタ読み込み待機中...');
+    await page.waitForSelector('[contenteditable="true"]', { state: 'visible', timeout: 60000 });
+    console.log('✅ エディタ表示確認');
+    await saveScreenshot('editor-visible');
 
     // ── 3. タイトル入力 ──
-    // noteのタイトル入力欄（contenteditable or textarea）
-    const titleSelectors = [
-      'textarea[placeholder*="タイトル"]',
-      'input[placeholder*="タイトル"]',
-      '[data-placeholder*="タイトル"]',
-      '.title-input',
-      '[class*="title"] [contenteditable]',
-    ];
+    const editables = page.locator('[contenteditable="true"]');
+    const editableCount = await editables.count();
+    console.log(`📝 contenteditable要素数: ${editableCount}`);
 
-    let titleFilled = false;
-    for (const sel of titleSelectors) {
-      try {
-        const el = page.locator(sel).first();
-        if (await el.isVisible({ timeout: 3000 })) {
-          await el.click();
-          await el.fill(title);
-          titleFilled = true;
-          console.log('✅ タイトル入力完了');
-          break;
-        }
-      } catch(e) {}
-    }
-
-    if (!titleFilled) {
-      // フォールバック: 最初のcontenteditable
-      await page.locator('[contenteditable="true"]').first().click();
-      await page.keyboard.type(title, { delay: 20 });
-      console.log('✅ タイトル入力完了（フォールバック）');
-    }
+    // 1つ目のcontenteditable = タイトル
+    const titleEl = editables.first();
+    await titleEl.click();
+    await page.waitForTimeout(300);
+    // fillではなくtypeで入力（contenteditable対応）
+    await titleEl.pressSequentially(title, { delay: 10 });
+    console.log('✅ タイトル入力完了');
+    await saveScreenshot('title-filled');
 
     await page.waitForTimeout(500);
-    await page.keyboard.press('Tab');
+    await page.keyboard.press('Enter');
     await page.waitForTimeout(500);
 
     // ── 4. 本文入力 ──
-    // 本文エリアをクリック（タイトル以外のcontenteditable）
-    const bodySelectors = [
-      '[data-placeholder*="本文"]',
-      '[placeholder*="本文"]',
-      '.note-editor [contenteditable="true"]:not(:first-child)',
-      '[class*="body"] [contenteditable]',
-    ];
-
-    let bodyFilled = false;
-    for (const sel of bodySelectors) {
-      try {
-        const el = page.locator(sel).first();
-        if (await el.isVisible({ timeout: 3000 })) {
-          await el.click();
-          bodyFilled = true;
-          break;
-        }
-      } catch(e) {}
-    }
-
-    if (!bodyFilled) {
-      // フォールバック: 2番目のcontenteditable
-      const editables = page.locator('[contenteditable="true"]');
-      const count = await editables.count();
-      if (count > 1) {
-        await editables.nth(1).click();
-      } else {
-        await editables.first().click();
-        await page.keyboard.press('End');
-        await page.keyboard.press('Enter');
-      }
+    // タイトル入力後にフォーカスが本文に移る、または2つ目のcontenteditable
+    let bodyEl;
+    if (editableCount > 1) {
+      bodyEl = editables.nth(1);
+      await bodyEl.click();
+    } else {
+      // タイトル末尾でEnter後そのまま本文エリアへ
+      await page.keyboard.press('End');
+      await page.keyboard.press('Enter');
     }
 
     await page.waitForTimeout(300);

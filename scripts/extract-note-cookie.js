@@ -9,7 +9,6 @@
 
 const { chromium } = require('playwright');
 const { execSync } = require('child_process');
-const readline = require('readline');
 const path = require('path');
 
 async function extractCookie() {
@@ -36,23 +35,27 @@ async function extractCookie() {
   console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
   console.log('📋 ブラウザでnote.comにログインしてください');
   console.log('   reCAPTCHAにチェックを入れてからログインボタンを押してください');
-  console.log('   ログイン完了（ダッシュボードが表示）したらここでEnterを押してください');
+  console.log('   ログイン完了を自動検知します（最大5分待機）');
   console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
   console.log('');
 
-  // Enterキー待機
-  await new Promise(resolve => {
-    const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
-    rl.question('✅ ログイン完了したらEnterを押してください: ', () => {
-      rl.close();
-      resolve();
-    });
-  });
+  // ログイン完了を自動検知（URLがloginから変わるまでポーリング）
+  console.log('⏳ ログイン完了を待機中...');
+  const deadline = Date.now() + 5 * 60 * 1000; // 5分
+  while (Date.now() < deadline) {
+    await page.waitForTimeout(2000);
+    const currentUrl = page.url();
+    if (!currentUrl.includes('/login')) {
+      console.log('✅ ログイン検知:', currentUrl);
+      break;
+    }
+    process.stdout.write('.');
+  }
+  console.log('');
 
-  // 現在のURLを確認
   const currentUrl = page.url();
   if (currentUrl.includes('/login')) {
-    console.error('❌ まだログインページにいます。先にログインを完了してください。');
+    console.error('❌ タイムアウト: 5分以内にログインが完了しませんでした');
     await browser.close();
     process.exit(1);
   }
