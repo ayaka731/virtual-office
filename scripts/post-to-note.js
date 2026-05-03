@@ -17,9 +17,14 @@ const EMAIL        = process.env.NOTE_EMAIL;
 const PASSWORD     = process.env.NOTE_PASSWORD;
 const MD_FILE      = process.argv[2];
 
-if (!NOTE_COOKIES && !EMAIL) {
-  console.error('❌ NOTE_COOKIES または NOTE_EMAIL が設定されていません');
-  console.error('   Cookie方式: node scripts/extract-note-cookie.js を実行してください');
+const os = require('os');
+const PROFILE_DIR  = path.join(os.homedir(), '.note-playwright-profile');
+const HAS_PROFILE  = fs.existsSync(PROFILE_DIR) && !process.env.CI;
+
+if (!HAS_PROFILE && !NOTE_COOKIES && !EMAIL) {
+  console.error('❌ 認証情報がありません。以下のいずれかを実行してください:');
+  console.error('   ローカル: node scripts/setup-note-profile.js');
+  console.error('   CI:       node scripts/extract-note-cookie.js');
   process.exit(1);
 }
 if (!MD_FILE) {
@@ -88,29 +93,37 @@ async function postToNote() {
   console.log('  タイトル:', title);
   console.log('  本文文字数:', plainBody.length, '字');
 
-  const browser = await chromium.launch({
-    headless: true,
-    args: [
-      '--no-sandbox',
-      '--disable-setuid-sandbox',
-      '--disable-blink-features=AutomationControlled',
-    ],
-  });
+  const useProfile = HAS_PROFILE;
 
-  const context = await browser.newContext({
-    userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
-    viewport: { width: 1280, height: 800 },
-    extraHTTPHeaders: {
-      'Accept-Language': 'ja-JP,ja;q=0.9,en-US;q=0.8,en;q=0.7',
-    },
-  });
+  let browser, context, page;
 
-  // webdriver フラグを隠す
+  if (useProfile) {
+    // ── ローカル実行: 永続プロファイル使用（note.comが既知端末として認識） ──
+    console.log(`🗂  ローカルプロファイル使用: ${PROFILE_DIR}`);
+    context = await chromium.launchPersistentContext(PROFILE_DIR, {
+      headless: true,
+      args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-blink-features=AutomationControlled'],
+      userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+      viewport: { width: 1280, height: 800 },
+    });
+    page = await context.newPage();
+  } else {
+    // ── CI実行: 通常のブラウザ起動 ──
+    browser = await chromium.launch({
+      headless: true,
+      args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-blink-features=AutomationControlled'],
+    });
+    context = await browser.newContext({
+      userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+      viewport: { width: 1280, height: 800 },
+      extraHTTPHeaders: { 'Accept-Language': 'ja-JP,ja;q=0.9,en-US;q=0.8,en;q=0.7' },
+    });
+    page = await context.newPage();
+  }
+
   await context.addInitScript(() => {
     Object.defineProperty(navigator, 'webdriver', { get: () => false });
   });
-
-  const page = await context.newPage();
 
   // スクリーンショット保存ヘルパー
   const logsDir = path.join(__dirname, '..', 'logs');
@@ -127,7 +140,19 @@ async function postToNote() {
 
   try {
     // ── 1. 認証 ──
-    if (NOTE_COOKIES) {
+    if (useProfile) {
+      // ── ローカルプロファイル方式（既にログイン済み） ──
+      console.log('🗂  プロファイルのセッションでログイン確認中...');
+      await page.goto('https://note.com', { waitUntil: 'domcontentloaded', timeout: 30000 });
+      await page.waitForTimeout(3000);
+      await saveScreenshot('01-profile-login');
+      const profileUrl = page.url();
+      if (profileUrl.includes('/login')) {
+        throw new Error('プロファイルのセッションが切れています。node scripts/setup-note-profile.js を再実行してください');
+      }
+      console.log('✅ プロファイルログイン確認:', profileUrl);
+
+    } else if (NOTE_COOKIES) {
       // ── Cookie方式（reCAPTCHA回避・推奨） ──
       console.log('🍪 Cookieでログイン中...');
       const cookies = JSON.parse(Buffer.from(NOTE_COOKIES, 'base64').toString('utf8'));
@@ -191,52 +216,29 @@ async function postToNote() {
     await page.waitForTimeout(2000);
     await saveScreenshot('03-after-post-button');
 
-    // モーダルや選択肢が出た場合「テキスト」を選択
-    const textOption = page.locator('text=テキスト, a[href*="/notes/new"]').first();
-    try {
-      if (await textOption.isVisible({ timeout: 3000 })) {
-        await textOption.click();
-        await page.waitForTimeout(2000);
-      }
-    } catch(e) {}
+    await saveScreenshot('03-editor-opening');
 
-    await saveScreenshot('04-editor-opening');
-
-    // エディタが表示されるまで待機（最大60秒）
+    // エディタが表示されるまで待機（最大30秒）
     console.log('⏳ エディタ読み込み待機中...');
-    await page.waitForSelector('[contenteditable="true"]', { state: 'visible', timeout: 60000 });
+    await page.waitForSelector('[contenteditable]', { state: 'visible', timeout: 30000 });
     console.log('✅ エディタ表示確認');
-    await saveScreenshot('05-editor-visible');
+    await saveScreenshot('04-editor-visible');
 
     // ── 3. タイトル入力 ──
-    const editables = page.locator('[contenteditable="true"]');
-    const editableCount = await editables.count();
-    console.log(`📝 contenteditable要素数: ${editableCount}`);
-
-    // 1つ目のcontenteditable = タイトル
-    const titleEl = editables.first();
+    // noteエディタ: 「記事タイトル」プレースホルダーのcontenteditable
+    const titleEl = page.locator('[contenteditable]').first();
     await titleEl.click();
     await page.waitForTimeout(300);
-    // fillではなくtypeで入力（contenteditable対応）
-    await titleEl.pressSequentially(title, { delay: 10 });
+    await page.keyboard.type(title, { delay: 15 });
     console.log('✅ タイトル入力完了');
-    await saveScreenshot('title-filled');
+    await saveScreenshot('05-title-filled');
 
-    await page.waitForTimeout(500);
+    // Enterで本文エリアへ移動
     await page.keyboard.press('Enter');
     await page.waitForTimeout(500);
 
     // ── 4. 本文入力 ──
-    // タイトル入力後にフォーカスが本文に移る、または2つ目のcontenteditable
-    let bodyEl;
-    if (editableCount > 1) {
-      bodyEl = editables.nth(1);
-      await bodyEl.click();
-    } else {
-      // タイトル末尾でEnter後そのまま本文エリアへ
-      await page.keyboard.press('End');
-      await page.keyboard.press('Enter');
-    }
+    // タイトルEnter後に本文エリアへフォーカスが移る
 
     await page.waitForTimeout(300);
 
@@ -313,7 +315,8 @@ async function postToNote() {
     console.error('❌ エラー:', err.message);
     process.exit(1);
   } finally {
-    await browser.close();
+    if (browser) await browser.close();
+    else await context.close(); // persistentContext の場合
   }
 }
 

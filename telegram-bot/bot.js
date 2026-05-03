@@ -37,15 +37,25 @@ function runClaudeCode(command, timeout = 600000) {
   });
 }
 
-function gitPush() {
+function postNoteArticle(mdFile) {
   return new Promise((resolve) => {
-    const cmd = `cd ${VIRTUAL_OFFICE} && git add output/drafts/ && git diff --cached --quiet && echo "NO_CHANGES" || (git commit -m "auto: 記事生成 $(date +%Y-%m-%d)" && git push origin main)`;
-    log('git push実行中...');
-    exec(cmd, { timeout: 60000 }, (error, stdout, stderr) => {
-      if (error) { log('git pushエラー（無視して続行）: ' + error.message); resolve('push_failed'); return; }
-      const out = stdout.trim();
-      log('git push結果: ' + out);
-      resolve(out.includes('NO_CHANGES') ? 'no_changes' : 'pushed');
+    const scriptPath = path.join(VIRTUAL_OFFICE, 'scripts', 'post-to-note.js');
+    const cmd = `cd ${path.join(VIRTUAL_OFFICE, 'scripts')} && node post-to-note.js "${mdFile}"`;
+    log('note投稿実行: ' + cmd);
+    exec(cmd, { timeout: 300000, env: { ...process.env } }, (error, stdout, stderr) => {
+      if (error) { log('note投稿エラー: ' + error.message); resolve({ ok: false, msg: error.message }); return; }
+      log('note投稿完了: ' + stdout.slice(-200));
+      resolve({ ok: true, msg: stdout });
+    });
+  });
+}
+
+function gitCommitAndPush() {
+  return new Promise((resolve) => {
+    const cmd = `cd ${VIRTUAL_OFFICE} && git add output/ && git diff --cached --quiet && echo "NO_CHANGES" || (git commit -m "auto: 記事生成 $(date +%Y-%m-%d)" && git push origin main)`;
+    exec(cmd, { timeout: 60000 }, (error, stdout) => {
+      if (error) { log('git pushエラー（無視）: ' + error.message); resolve('failed'); return; }
+      resolve(stdout.includes('NO_CHANGES') ? 'no_changes' : 'pushed');
     });
   });
 }
@@ -61,16 +71,30 @@ async function produceArticle(genre) {
     await notifyOwner('✅ <b>記事生成完了</b>\nジャンル: ' + genreLabel + '\n所要時間: ' + elapsed + '秒\n━━━━━━━━━━━━━━━\n' + summary);
     log('記事生成成功: ' + genre + ' (' + elapsed + '秒)');
 
-    // note投稿トリガー: output/drafts/ をgit pushしてGitHub Actionsを起動
-    await notifyOwner('📤 <b>note投稿トリガー中...</b>\nGitHub Actionsに記事をpushします');
-    const pushResult = await gitPush();
-    if (pushResult === 'pushed') {
-      await notifyOwner('🚀 <b>GitHub Actionsを起動しました</b>\nnote自動投稿ワークフローが開始されます\nhttps://github.com/ayaka731/virtual-office/actions');
-    } else if (pushResult === 'no_changes') {
-      await notifyOwner('⚠️ <b>新しい記事ファイルが見つかりません</b>\n手動でGitHub Actionsを実行してください');
+    // 生成されたnote記事ファイルを特定
+    const { execSync } = require('child_process');
+    let noteFile = '';
+    try {
+      noteFile = execSync(`ls -t ${VIRTUAL_OFFICE}/output/drafts/*/*.md 2>/dev/null | grep note | head -1`).toString().trim();
+    } catch(e) {}
+
+    if (noteFile) {
+      await notifyOwner('📤 <b>note投稿中...</b>\nファイル: ' + path.basename(noteFile));
+      const postResult = await postNoteArticle(noteFile);
+      if (postResult.ok) {
+        // URLをログから抽出
+        const urlMatch = postResult.msg.match(/https:\/\/note\.com\/[^\s]+/);
+        const noteUrl = urlMatch ? urlMatch[0] : '（URL不明）';
+        await notifyOwner('🎉 <b>note投稿完了！</b>\n' + noteUrl);
+      } else {
+        await notifyOwner('⚠️ <b>note投稿失敗</b>\n' + postResult.msg.slice(0, 500) + '\n\nnote投稿は手動で実行してください:\n<code>cd ~/virtual-office/scripts && node post-to-note.js ' + noteFile + '</code>');
+      }
     } else {
-      await notifyOwner('⚠️ <b>git pushに失敗しました</b>\n手動でpushしてください');
+      await notifyOwner('⚠️ <b>note記事ファイルが見つかりません</b>');
     }
+
+    // git push（バックアップ用）
+    gitCommitAndPush().then(r => log('git push: ' + r));
 
     return { success: true, elapsed, result };
   } catch (error) {
