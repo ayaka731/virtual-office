@@ -176,21 +176,37 @@ async function postToNote() {
       console.log('✅ ログイン成功');
     }
 
-    // ── 2. 新規記事ページへ ──
+    // ── 2. 新規記事ページへ（ホームの「投稿」ボタン経由） ──
     console.log('📝 新規記事を作成中...');
-    await page.goto('https://note.com/notes/new', { waitUntil: 'domcontentloaded', timeout: 60000 });
-    // エディタのJSが完全に読み込まれるまで networkidle を待つ（最大30秒）
-    await Promise.race([
-      page.waitForLoadState('networkidle', { timeout: 30000 }),
-      page.waitForTimeout(15000),
-    ]);
-    await saveScreenshot('editor-loaded');
+    // 直接 /notes/new へ行くとスピナーで止まるため、ホームの「投稿」ボタン経由で開く
+    await page.goto('https://note.com', { waitUntil: 'domcontentloaded', timeout: 30000 });
+    await page.waitForTimeout(3000);
+    await saveScreenshot('02-homepage');
+
+    // 「投稿」ボタンをクリック
+    const postBtn = page.locator('a[href="/notes/new"], button:has-text("投稿"), a:has-text("投稿")').first();
+    await postBtn.waitFor({ state: 'visible', timeout: 15000 });
+    await postBtn.click();
+    console.log('✅ 投稿ボタンクリック');
+    await page.waitForTimeout(2000);
+    await saveScreenshot('03-after-post-button');
+
+    // モーダルや選択肢が出た場合「テキスト」を選択
+    const textOption = page.locator('text=テキスト, a[href*="/notes/new"]').first();
+    try {
+      if (await textOption.isVisible({ timeout: 3000 })) {
+        await textOption.click();
+        await page.waitForTimeout(2000);
+      }
+    } catch(e) {}
+
+    await saveScreenshot('04-editor-opening');
 
     // エディタが表示されるまで待機（最大60秒）
     console.log('⏳ エディタ読み込み待機中...');
     await page.waitForSelector('[contenteditable="true"]', { state: 'visible', timeout: 60000 });
     console.log('✅ エディタ表示確認');
-    await saveScreenshot('editor-visible');
+    await saveScreenshot('05-editor-visible');
 
     // ── 3. タイトル入力 ──
     const editables = page.locator('[contenteditable="true"]');
