@@ -5,10 +5,12 @@
   "type": "commonjs",
   "scripts": {
     "post-note": "node post-to-note.js",
+    "post-x": "node post-to-x.js",
     "install-browsers": "npx playwright install chromium"
   },
   "dependencies": {
     "@playwright/test": "^1.44.0",
-    "playwright": "^1.44.0"
+    "playwright": "^1.44.0",
+    "twitter-api-v2": "^1.29.0"
   }
 }

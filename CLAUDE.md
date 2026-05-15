@@ -49,6 +49,7 @@ AIキャラクターを部署ごとに配置し、ブログ記事の企画→リ
 - **アオイ**（メインライター）: note記事執筆 → `skills/writing/note-writing.md`
 - **ソラ**（SNSライター）: X・Instagram執筆 → `skills/writing/x-writing.md`, `skills/writing/instagram-writing.md`
 - **レイ**（動画台本）: TikTok台本執筆 → `skills/writing/tiktok-writing.md`
+- **ハナ**（ビジュアルディレクター）: 全記事のカバー画像生成 → `skills/writing/cover-image.md`
 
 ### 4. 校正部 (skills/review/)
 - **マコト**（SEO校正）: SEOスコア採点・改善指示 → `skills/review/seo-review.md`
@@ -129,7 +130,8 @@ virtual-office/
 │   │   ├── note-writing.md      # アオイ：note執筆
 │   │   ├── x-writing.md         # ソラ：X執筆
 │   │   ├── instagram-writing.md # ソラ：Instagram執筆
-│   │   └── tiktok-writing.md    # レイ：TikTok台本
+│   │   ├── tiktok-writing.md    # レイ：TikTok台本
+│   │   └── cover-image.md       # ハナ：カバー画像生成
 │   ├── review/
 │   │   ├── seo-review.md        # マコト：SEO校正
 │   │   ├── legal-review.md      # サクラ：法務校正
@@ -153,19 +155,28 @@ virtual-office/
 ## コマンド実行フロー
 
 ### `produce article G1` の実行フロー
-1. ミサキがG1向けテーマを決定（`skills/planning/trend-analysis.md`）
-2. ケンタがKW戦略を立案（`skills/planning/keyword-research.md`）
-3. ハルカがWeb調査（`skills/research/web-research.md`）
-4. タクミが競合分析（`skills/research/competitor-analysis.md`）
-5. リンが法規制リスクを事前チェック（`skills/research/legal-check.md`）
-6. アオイがnote記事を執筆（`skills/writing/note-writing.md`）
-7. ソラがX・Instagramコンテンツを作成（`skills/writing/x-writing.md`, `skills/writing/instagram-writing.md`）
-8. レイがTikTok台本を作成（`skills/writing/tiktok-writing.md`）
-9. マコトがSEO採点（`skills/review/seo-review.md`）
-10. サクラが法務最終チェック（`skills/review/legal-review.md`）
-11. ヒロが品質チェック（`skills/review/quality-review.md`）
-12. ナツキが最終判定（`skills/review/final-check.md`）
-13. GO判定なら `output/drafts/YYYY-MM-DD/` に保存、ユイがスケジュール設定
+各ステップ開始時に **必ず** `logs/pipeline.log` に以下フォーマットで追記すること（絶対ルール）:
+
+```
+【部署名・キャラクター名】
+- 実施内容の箇条書き
+```
+
+1. ミサキがG1向けテーマを決定（`skills/planning/trend-analysis.md`）→ `【企画部・ミサキ】` をpipeline.logに記録
+2. ケンタがKW戦略を立案（`skills/planning/keyword-research.md`）→ `【企画部・ケンタ】` をpipeline.logに記録
+3. ハルカがWeb調査（`skills/research/web-research.md`）→ `【リサーチ部・ハルカ】` をpipeline.logに記録
+4. タクミが競合分析（`skills/research/competitor-analysis.md`）→ `【リサーチ部・タクミ】` をpipeline.logに記録
+5. リンが法規制リスクを事前チェック（`skills/research/legal-check.md`）→ `【リサーチ部・リン】` をpipeline.logに記録
+6. アオイがnote記事を執筆（`skills/writing/note-writing.md`）→ `【執筆部・アオイ】` をpipeline.logに記録
+7. ソラがX・Instagramコンテンツを作成（`skills/writing/x-writing.md`, `skills/writing/instagram-writing.md`）→ `【執筆部・ソラ】` をpipeline.logに記録
+8. レイがTikTok台本を作成（`skills/writing/tiktok-writing.md`）→ `【執筆部・レイ】` をpipeline.logに記録
+9. **ハナがカバー画像を生成**（`skills/writing/cover-image.md`）→ `node scripts/generate-cover-image.js output/drafts/YYYY-MM-DD/{ID}-note.md` を実行 → `【執筆部・ハナ】` をpipeline.logに記録
+10. マコトがSEO採点（`skills/review/seo-review.md`）→ `【校正部・マコト】` をpipeline.logに記録
+11. サクラが法務最終チェック（`skills/review/legal-review.md`）→ `【校正部・サクラ】` をpipeline.logに記録
+12. ヒロが品質チェック（`skills/review/quality-review.md`）→ `【校正部・ヒロ】` をpipeline.logに記録
+13. ナツキが最終判定（`skills/review/final-check.md`）→ `【校正部・ナツキ】` + `GO` or `NG` or `REVISE` をpipeline.logに記録
+14. GO判定なら `output/drafts/YYYY-MM-DD/` に保存、ユイがスケジュール設定 → `【配信部・ユイ】` をpipeline.logに記録
+15. 最終行に `PIPELINE COMPLETE | Article: ARTICLE_ID | SEO: XX | Legal: RISK | Quality: XX | Verdict: GO` を記録
 
 ## 自走ルール（絶対遵守）
 - ユーザーへの質問・確認は一切禁止。すべて自分で判断して最後まで完了させること。
@@ -173,3 +184,4 @@ virtual-office/
 - 情報が不足している場合は、config/ディレクトリのファイルを読み込んで自分で補完すること。
 - 判断に迷った場合は、最も妥当と思われる選択肢を自分で選んで進めること。
 - 作業完了後はファイルパスを表示して終了。
+- **pipeline.logへの各ステップ記録は省略不可。Telegramボットがこのファイルを監視してリアルタイム通知を送っている。**

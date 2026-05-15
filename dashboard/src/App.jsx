@@ -176,43 +176,48 @@ function Sprite({ charKey, scale=3, active=false, walkPhase=0 }) {
 }
 
 // キャラクター1体（歩き＋吹き出し）
-function CharUnit({ ck, dept, active, wf, onChar, lineIdx }) {
+function CharUnit({ ck, dept, active, wf, onChar, lineIdx, spotlight }) {
   const ch = CHARS[ck];
+  // spotlight = このキャラが今まさに動いている
+  const isWorking = active && spotlight;
   // キャラごとに位相をずらして独立歩行
   const seed = ck.split("").reduce((a,c)=>a+c.charCodeAt(0),0);
-  const period = 8 + (seed % 5);           // 歩行周期（ステップ数）
-  const phase  = seed % period;             // 位相オフセット
-  const t = (wf + phase) % (period * 2);   // 往復タイマー
-  const dir = t < period ? 1 : -1;         // 方向: 1=右, -1=左
+  const period = 8 + (seed % 5);
+  const phase  = seed % period;
+  const t = (wf + phase) % (period * 2);
+  const dir = t < period ? 1 : -1;
   const posX = active ? (dir * ((t % period) / period) * 18 - 9) : 0;
-  const walkPhase = active ? ((wf % 2) + 1) : 0; // 1 or 2 交互
+  const walkPhase = active ? ((wf % 2) + 1) : 0;
 
   const lines = CHAR_LINES[ck] || [];
-  const bubbleText = active ? lines[lineIdx % lines.length] : null;
+  const bubbleText = isWorking ? lines[lineIdx % lines.length] : (active ? null : null);
 
   return (
     <div onClick={() => onChar(ck)} style={{
       cursor:"pointer", textAlign:"center", position:"relative",
       display:"flex", flexDirection:"column", alignItems:"center",
-      paddingTop:28,  // 吹き出し用スペース
+      paddingTop:28,
     }}>
-      <Bubble text={bubbleText} color={dept.color} visible={active && !!bubbleText} />
+      <Bubble text={bubbleText} color={dept.color} visible={!!bubbleText} />
       <div style={{
         transform:`translateX(${posX}px)`,
         transition:"transform 0.35s steps(1)",
-        border: active ? `1px solid ${dept.color}55` : "1px solid transparent",
-        background: active ? `${dept.color}0a` : "transparent",
+        border: isWorking ? `2px solid ${dept.color}` : active ? `1px solid ${dept.color}55` : "1px solid transparent",
+        background: isWorking ? `${dept.color}22` : active ? `${dept.color}0a` : "transparent",
         padding:2, borderRadius:2,
+        boxShadow: isWorking ? `0 0 8px ${dept.color}88` : "none",
+        animation: isWorking ? "bl 0.6s steps(1) infinite" : "none",
       }}>
         <Sprite charKey={ck} scale={3} active={active} walkPhase={active ? walkPhase : 0} />
       </div>
-      <div style={{ fontFamily:"'DotGothic16'",fontSize:9,marginTop:2,color:active?"#ddd":"#252535" }}>{ch.name}</div>
-      <div style={{ fontFamily:"'Press Start 2P'",fontSize:4,color:active?dept.color:"#1a1a28" }}>{ch.role}</div>
+      <div style={{ fontFamily:"'DotGothic16'",fontSize:9,marginTop:2,color:isWorking?"#fff":active?"#ddd":"#252535" }}>{ch.name}</div>
+      <div style={{ fontFamily:"'Press Start 2P'",fontSize:4,color:isWorking?dept.color:active?dept.color+"88":"#1a1a28" }}>{ch.role}</div>
+      {isWorking && <div style={{fontFamily:"'Press Start 2P'",fontSize:3,color:"#0f0",animation:"bl 0.4s steps(1) infinite"}}>▶WORK</div>}
     </div>
   );
 }
 
-function Room({ dk, dept, active, msg, wf, lineIdx, onChar }) {
+function Room({ dk, dept, active, msg, wf, lineIdx, onChar, activeCharKey }) {
   return (
     <div style={{
       background: active ? "#161628" : "#0c0c16",
@@ -247,7 +252,8 @@ function Room({ dk, dept, active, msg, wf, lineIdx, onChar }) {
       }}>
         {dept.chars.map(ck => (
           <CharUnit key={ck} ck={ck} dept={dept} active={active}
-            wf={wf} onChar={onChar} lineIdx={lineIdx} />
+            wf={wf} onChar={onChar} lineIdx={lineIdx}
+            spotlight={activeCharKey === ck} />
         ))}
       </div>
       {/* 部署メッセージ（下部） */}
@@ -266,6 +272,15 @@ function Room({ dk, dept, active, msg, wf, lineIdx, onChar }) {
   );
 }
 
+// キャラ名→キー変換
+const NAME_TO_KEY = {
+  ミサキ:'misaki',ケンタ:'kenta',ユイ:'yui',
+  ハルカ:'haruka',タクミ:'takumi',リン:'rin',
+  アオイ:'aoi',ソラ:'sora',レイ:'rei',
+  マコト:'makoto',サクラ:'sakura',ヒロ:'hiro',ナツキ:'natsuki',
+  カイ:'kai',ミク:'miku',
+};
+
 export default function App() {
   const [stage, setStage] = useState(-1);
   const [logs, setLogs] = useState([]);
@@ -276,6 +291,8 @@ export default function App() {
   const [botRunning, setBotRunning] = useState(false);
   const [pipeAge, setPipeAge] = useState(Infinity);
   const [activeMsg, setActiveMsg] = useState({});
+  const [activeCharKey, setActiveCharKey] = useState(null); // 現在動いているキャラのkey
+  const [genre, setGenre] = useState('');
   const [uptime, setUptime] = useState(0);
   const lr = useRef(null);
   const bootTime = useRef(Date.now());
@@ -286,11 +303,19 @@ export default function App() {
       try {
         const res = await fetch('/api/status');
         const data = await res.json();
-        setStage(data.stage);
+        setStage(data.stage ?? -1);
         setArts(data.articles || []);
         setBotRunning(data.botRunning);
-        setPipeAge(data.pipeAge);
+        setPipeAge(data.pipeAge ?? Infinity);
+        setGenre(data.genre || '');
         if (data.activeMsg) setActiveMsg(prev => ({ ...prev, [PIPE[data.stage]]: data.activeMsg }));
+        // アクティブキャラを特定
+        if (data.activeChar) {
+          const ck = NAME_TO_KEY[data.activeChar];
+          if (ck) setActiveCharKey(ck);
+        } else if (data.stage < 0) {
+          setActiveCharKey(null);
+        }
         setLogs(data.logs.map((l,i) => ({ ...l, k: i + l.ts + l.m })));
       } catch(e) {}
     };
@@ -349,11 +374,24 @@ export default function App() {
             animation:isActive?"bl 0.8s steps(1) infinite":"none"}}>
             {isActive?"RUNNING":botRunning?"BOT ON":"IDLE"}
           </span>
-          {pipeAge < 60 && (
-            <span style={{fontSize:6,color:"#555",fontFamily:"'Press Start 2P'"}}>
-              {pipeAge}s ago
+          {isActive && genre && (
+            <span style={{fontSize:6,color:"#FFD700",fontFamily:"'Press Start 2P'",border:"1px solid #FFD70066",padding:"1px 4px"}}>
+              {genre}
             </span>
           )}
+          {pipeAge < 60 && (
+            <span style={{fontSize:6,color:"#555",fontFamily:"'Press Start 2P'"}}>{pipeAge}s ago</span>
+          )}
+          {/* ダッシュボードから直接トリガー */}
+          {!isActive && ['G1','G2'].map(g=>(
+            <button key={g} onClick={async()=>{
+              await fetch('/api/produce',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({genre:g})});
+            }} style={{
+              fontFamily:"'Press Start 2P'",fontSize:5,cursor:'pointer',
+              background:'transparent',border:`1px solid ${g==='G1'?'#CC3333':'#4169E1'}`,
+              color:g==='G1'?'#CC3333':'#4169E1',padding:"2px 5px",
+            }}>+{g}</button>
+          ))}
         </div>
         <div style={{display:"flex",gap:14,alignItems:"center"}}>
           {[
@@ -391,7 +429,8 @@ export default function App() {
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
             {Object.entries(DEPTS).map(([dk,d])=>(
               <Room key={dk} dk={dk} dept={d} active={PIPE[stage]===dk}
-                msg={activeMsg[dk]} wf={wf} lineIdx={lineIdx} onChar={setSel} />
+                msg={activeMsg[dk]} wf={wf} lineIdx={lineIdx} onChar={setSel}
+                activeCharKey={activeCharKey} />
             ))}
           </div>
         </div>

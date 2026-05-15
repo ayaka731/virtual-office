@@ -12,10 +12,10 @@
     "name": "瑠璃 / チャトレで500貯めた女",
     "url": "https://x.com/tinzhnglil15017",
     "api": {
-      "apiKey": "",
-      "apiSecret": "",
-      "accessToken": "",
-      "accessSecret": ""
+      "apiKey": "uSheRMhJWIjEb9NEemB345vxG",
+      "apiSecret": "k1kOZEhXHyFYU9kMBpibIjfBuyTKkG6dFaVTZSpGBO9MKn1rvn",
+      "accessToken": "2048670744687841280-eyLbAA8J0IbHIfGbd8bjbxUEB1q8Dn",
+      "accessSecret": "bqvgMZkhkLz6AaUpHcMGJXTsmRdeXp35hXSspZ3CCrtgb"
     },
     "postMethod": "api",
     "notes": "X API v2のキーを取得して上記に入力"

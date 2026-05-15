@@ -12,16 +12,24 @@ GO判定された記事を各プラットフォームに投稿する。
 
 ### 2. プラットフォーム別投稿
 
-#### note投稿
-- Markdown → noteの記事エディタ形式に変換
-- タイトル、本文、タグを設定
-- 有料/無料の設定
-- 予約投稿 or 即時投稿
+#### note + X 同時投稿（推奨）
+```bash
+node scripts/publish-with-x.js output/drafts/YYYY-MM-DD/{ID}-note.md
+```
+- note に投稿 → noteURL を自動取得 → X スレッドに noteURL 付きで投稿
+- X投稿をスキップしたい場合は `SKIP_X=1 node scripts/publish-with-x.js ...`
 
-#### X投稿
-- スレッドの場合：1本目投稿 → リプライで連鎖
-- 画像がある場合：添付
-- 投稿間隔：各ツイート30秒間隔
+#### note単体投稿
+```bash
+node scripts/post-to-note.js output/drafts/YYYY-MM-DD/{ID}-note.md
+```
+
+#### X単体投稿
+```bash
+node scripts/post-to-x.js output/drafts/YYYY-MM-DD/{ID}-x.md [noteURL]
+```
+- スレッドの場合：1本目投稿 → GraphQL応答からtweetIDを取得 → リプライで連鎖
+- noteURLを引数で渡すと最後のツイートに自動追記
 
 #### Instagram投稿
 - キャプションテキストを準備
