@@ -170,6 +170,20 @@ async function main() {
     const size = Math.round(fs.statSync(outPath).size / 1024);
     console.log(`✅ 画像生成完了: ${outPath} (${size}KB)`);
     console.log(`   → note投稿時に自動でカバー画像として使用されます`);
+
+    // pipeline.log に記録
+    const logDir  = path.join(__dirname, '..', 'logs');
+    const logPath = path.join(logDir, 'pipeline.log');
+    fs.mkdirSync(logDir, { recursive: true });
+    const logEntry = [
+      `【執筆部・ハナ】`,
+      `- 記事ID: ${id}`,
+      `- カバー画像生成: assets/covers/${id}-cover.png`,
+      `- プロンプト概要: ${prompt.slice(0, 80)}...`,
+      `- サイズ: ${WIDTH}×${HEIGHT}px`,
+      '',
+    ].join('\n');
+    fs.appendFileSync(logPath, logEntry);
   } catch(e) {
     console.error(`❌ 画像生成失敗: ${e.message}`);
     process.exit(1);

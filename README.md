@@ -126,56 +126,80 @@ Claude Codeが動くと自動でキャラクターが歩きだしてリアルタ
 | Threads | ruri_yorushoku | 手動 |
 | lit.link | honshitoro | プロフィールまとめ |
 
-## X API設定
+## X自動投稿（post-to-x-api.js）
 
-X（Twitter）への自動投稿にはAPI v2のキーが必要です。
+### 投稿構成（2段スレッド固定）
 
-### APIキーの取得手順
+```
+投稿①：短文フック（不安を煽るスタイル・30〜50文字・画像なし）
+  └ 投稿②：noteURL（1行のみ・リプライとして自動追加）
+```
 
-1. **Developer Portalにアクセス**
-   [https://developer.twitter.com/en/portal/dashboard](https://developer.twitter.com/en/portal/dashboard)
+- 画像は添付しない（テキストのみでインプを最大化）
+- URLを本文に入れるとインプが最大70%落ちるため、必ず②のリプライに
 
-2. **アプリを作成（またはすでにあるアプリを選択）**
-   - `+ Add app` → アプリ名を入力 → `Production`環境を選択
-
-3. **アクセス許可の設定**
-   - `App settings` → `User authentication settings` → 編集
-   - `App permissions`: **Read and write** を選択
-   - `Type of App`: `Web App, Automated App or Bot`
-   - `Callback URI` と `Website URL` は任意のURLを入力（例: `https://example.com`）
-   - 保存
-
-4. **キーとトークンを取得**
-   - `Keys and tokens` タブを開く
-   - `Consumer Keys` セクション → `API Key and Secret` → **Regenerate**（または確認）
-   - `Authentication Tokens` セクション → `Access Token and Secret` → **Generate**
-   - **⚠️ 生成直後しか表示されない。必ずメモすること**
-
-5. **`config/platforms.json` を更新**
-
-   ```json
-   "x": {
-     "api": {
-       "apiKey":       "取得したAPI Key",
-       "apiSecret":    "取得したAPI Key Secret",
-       "accessToken":  "取得したAccess Token",
-       "accessSecret": "Access Token Secret"
-     }
-   }
-   ```
-
-### 投稿テスト
+### 投稿コマンド
 
 ```bash
 cd ~/virtual-office/scripts
-node post-to-x-api.js ../output/drafts/YYYY-MM-DD/G1-001-x.md
+node post-to-x-api.js ../output/drafts/YYYY-MM-DD/G1-001-x.md https://note.com/yorushoku_500/n/xxx
+```
+
+noteURLは第2引数で渡す。省略した場合はMarkdownの最終ブロックのURLを使用。
+
+---
+
+## X APIキーの登録方法
+
+X（Twitter）への自動投稿にはAPI v2のキーが必要です。以下の手順で取得・登録してください。
+
+### ステップ1：Developer Portalにアクセス
+
+[https://developer.twitter.com/en/portal/dashboard](https://developer.twitter.com/en/portal/dashboard) を開き、Xアカウントでログインする。
+
+### ステップ2：アプリを作成
+
+1. `+ Add app` をクリック
+2. アプリ名を入力（例: `virtual-office-bot`）
+3. 環境は `Production` を選択
+
+### ステップ3：アクセス許可を「読み書き」に設定
+
+1. 作成したアプリの `App settings` を開く
+2. `User authentication settings` → **Edit** をクリック
+3. 以下を設定して保存：
+   - `App permissions`: **Read and write**
+   - `Type of App`: `Web App, Automated App or Bot`
+   - `Callback URI`: `https://example.com`（任意）
+   - `Website URL`: `https://example.com`（任意）
+
+### ステップ4：キーとトークンを取得
+
+1. `Keys and tokens` タブを開く
+2. `Consumer Keys` セクション → `API Key and Secret` を **Regenerate**（または確認）
+3. `Authentication Tokens` セクション → `Access Token and Secret` を **Generate**
+
+> **⚠️ 生成直後しか全文表示されない。必ずコピーしてメモすること**
+
+### ステップ5：`config/platforms.json` に登録
+
+```json
+"x": {
+  "id": "tinzhnglil15017",
+  "api": {
+    "apiKey":      "ここにAPI Key",
+    "apiSecret":   "ここにAPI Key Secret",
+    "accessToken": "ここにAccess Token",
+    "accessSecret":"ここにAccess Token Secret"
+  }
+}
 ```
 
 ### 注意事項
 
-- `accessToken` / `accessSecret` は **自分のアカウント**で発行すること（他アカウントへの代理投稿には別途OAuth2が必要）
+- `accessToken` / `accessSecret` は **自分のアカウント**で発行すること
 - 無料プラン（Free Tier）は月1,500ツイートまで書き込み可能
-- APIキーは `config/platforms.json` に直書きされているため、このファイルを**絶対にpublicリポジトリへpushしない**こと（.gitignoreで除外推奨）
+- `config/platforms.json` は **絶対にpublicリポジトリにpushしない**（.gitignore推奨）
 
 ---
 
