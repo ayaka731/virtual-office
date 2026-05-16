@@ -277,6 +277,25 @@ async function postToNote() {
       await page.waitForTimeout(5000);
       await saveScreenshot('01-login-page');
 
+      // ── ログイン方法の選択画面が出た場合はメールアドレスを選択 ──
+      // note.comがA/Bテスト等でSNS選択画面を表示することがある
+      try {
+        const emailOptionBtn = page.locator([
+          'button:has-text("メールアドレス")',
+          'a:has-text("メールアドレス")',
+          'button:has-text("メールでログイン")',
+          'a:has-text("メールでログイン")',
+          '[data-note-login-method="email"]',
+        ].join(', '));
+        await emailOptionBtn.waitFor({ state: 'visible', timeout: 5000 });
+        console.log('📧 ログイン方法選択画面を検出 → メールアドレスを選択');
+        await emailOptionBtn.click();
+        await page.waitForTimeout(3000);
+        await saveScreenshot('01b-after-email-option');
+      } catch (e) {
+        // 選択画面なし（直接フォームが表示されている）
+      }
+
       await page.waitForSelector('#email', { state: 'visible', timeout: 20000 });
       await page.click('#email');
       await page.fill('#email', EMAIL);

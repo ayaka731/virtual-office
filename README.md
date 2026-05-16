@@ -126,6 +126,59 @@ Claude Codeが動くと自動でキャラクターが歩きだしてリアルタ
 | Threads | ruri_yorushoku | 手動 |
 | lit.link | honshitoro | プロフィールまとめ |
 
+## X API設定
+
+X（Twitter）への自動投稿にはAPI v2のキーが必要です。
+
+### APIキーの取得手順
+
+1. **Developer Portalにアクセス**
+   [https://developer.twitter.com/en/portal/dashboard](https://developer.twitter.com/en/portal/dashboard)
+
+2. **アプリを作成（またはすでにあるアプリを選択）**
+   - `+ Add app` → アプリ名を入力 → `Production`環境を選択
+
+3. **アクセス許可の設定**
+   - `App settings` → `User authentication settings` → 編集
+   - `App permissions`: **Read and write** を選択
+   - `Type of App`: `Web App, Automated App or Bot`
+   - `Callback URI` と `Website URL` は任意のURLを入力（例: `https://example.com`）
+   - 保存
+
+4. **キーとトークンを取得**
+   - `Keys and tokens` タブを開く
+   - `Consumer Keys` セクション → `API Key and Secret` → **Regenerate**（または確認）
+   - `Authentication Tokens` セクション → `Access Token and Secret` → **Generate**
+   - **⚠️ 生成直後しか表示されない。必ずメモすること**
+
+5. **`config/platforms.json` を更新**
+
+   ```json
+   "x": {
+     "api": {
+       "apiKey":       "取得したAPI Key",
+       "apiSecret":    "取得したAPI Key Secret",
+       "accessToken":  "取得したAccess Token",
+       "accessSecret": "Access Token Secret"
+     }
+   }
+   ```
+
+### 投稿テスト
+
+```bash
+cd ~/virtual-office/scripts
+node post-to-x-api.js ../output/drafts/YYYY-MM-DD/G1-001-x.md
+```
+
+### 注意事項
+
+- `accessToken` / `accessSecret` は **自分のアカウント**で発行すること（他アカウントへの代理投稿には別途OAuth2が必要）
+- 無料プラン（Free Tier）は月1,500ツイートまで書き込み可能
+- APIキーは `config/platforms.json` に直書きされているため、このファイルを**絶対にpublicリポジトリへpushしない**こと（.gitignoreで除外推奨）
+
+---
+
 ## ジャンル
 
 | ID | ジャンル | 状態 |
