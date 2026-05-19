@@ -104,7 +104,9 @@ output/drafts/YYYY-MM-DD/G1-001-tiktok.md
 | `config/genres.json` | ジャンル定義 |
 | `config/platforms.json` | プラットフォーム仕様 |
 | `config/affiliate-links.json` | アフィリンク管理 |
-| `templates/note-template.md` | note記事テンプレート |
+| `templates/note-template.md` | note記事テンプレート（4段構成・SHElikes式） |
+| `templates/x-template.md` | X投稿テンプレート（5パターン・2ポスト構成） |
+| `templates/eyecatch-texts.json` | アイキャッチ画像用キャッチコピー20選 |
 
 ---
 
@@ -141,7 +143,9 @@ virtual-office/
 │       ├── publish-manager.md   # カイ：投稿管理
 │       └── analytics.md         # ミク：分析
 ├── templates/
-│   └── note-template.md         # note記事テンプレート
+│   ├── note-template.md         # note記事テンプレート（4段構成）
+│   ├── x-template.md            # X投稿テンプレート（5パターン）
+│   └── eyecatch-texts.json      # アイキャッチ用キャッチコピー20選
 ├── output/
 │   ├── drafts/                  # 執筆済み・校正待ち
 │   ├── reviewed/                # 校正済み・GO判定済み
@@ -177,6 +181,27 @@ virtual-office/
 13. ナツキが最終判定（`skills/review/final-check.md`）→ `【校正部・ナツキ】` + `GO` or `NG` or `REVISE` をpipeline.logに記録
 14. GO判定なら `output/drafts/YYYY-MM-DD/` に保存、ユイがスケジュール設定 → `【配信部・ユイ】` をpipeline.logに記録
 15. 最終行に `PIPELINE COMPLETE | Article: ARTICLE_ID | SEO: XX | Legal: RISK | Quality: XX | Verdict: GO` を記録
+
+## X投稿ルール（絶対遵守）
+
+1. **X投稿は必ず2ポスト構成にする**
+   - 投稿①：煽り短文（140字以内）← URLなし・画像なし
+   - 投稿②（ツリー）：noteのURL（1行のみ）
+2. **投稿①は `templates/x-template.md` の5パターン（A〜E）から選んで生成する**
+   - A. 経済不安型 / B. 時間浪費型 / C. 比較焦燥型 / D. 将来不安型 / E. 自立促進型
+3. **本文にURLを直貼りすることは絶対禁止**（インプが50〜70%落ちる）
+4. **画像添付は不要**（テキストのみで完結）
+5. 投稿②のURL追加はbotが自動実行するため、x.mdには投稿①のテキストのみ記載
+
+## note記事ルール（絶対遵守）
+
+1. **全記事を4段構成で執筆する（`templates/note-template.md` 参照）**
+   - 第1段：モヤモヤ共感（導入3〜5行・読者の不安を代弁）
+   - 第2段：ビフォーアフター（手取り18万OL→在宅月30万の実体験。数字必須）
+   - 第3段：具体的方法（ステップ解説 + アフィリリンクを「私が使ってるのはここ」形式で自然挿入）
+   - 第4段：行動促進（「まず登録だけでもしてみて」系の締め）
+2. **アフィリリンクは `config/affiliate-links.json` から選択。セールス感を出さない**
+3. **アイキャッチ画像テキストは `templates/eyecatch-texts.json` から選択・参考にする**
 
 ## 自走ルール（絶対遵守）
 - ユーザーへの質問・確認は一切禁止。すべて自分で判断して最後まで完了させること。
