@@ -1,3 +1,8 @@
+<!-- POSTED -->
+## note投稿結果
+- URL: https://note.com/yorushoku_500/n/n5fc7c486ebaf
+- 投稿日時: 2026-05-22T03:17:23.834Z
+
 # 梅雨前に買っておけばよかった神グッズ5選【Amazon・2,000円以下あり】
 
 ※本記事にはAmazonアソシエイトリンクが含まれます

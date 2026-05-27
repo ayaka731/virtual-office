@@ -1,3 +1,8 @@
+<!-- POSTED -->
+## note投稿結果
+- URL: https://note.com/yorushoku_500/n/nc1cba6457b3f
+- 投稿日時: 2026-05-26T23:06:34.660Z
+
 # 育休中の私がこっそり月3万を作った話
 
 ---

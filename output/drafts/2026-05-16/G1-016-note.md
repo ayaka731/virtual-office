@@ -1,3 +1,8 @@
+<!-- POSTED -->
+## note投稿結果
+- URL: https://note.com/yorushoku_500/n/n048ba3ed95e5
+- 投稿日時: 2026-05-16T11:04:50.826Z
+
 <!--
 PR表記：必ず記事冒頭に以下を記載
 -->

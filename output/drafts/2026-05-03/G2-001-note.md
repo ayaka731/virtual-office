@@ -1,3 +1,8 @@
+<!-- POSTED -->
+## note投稿結果
+- URL: https://note.com/yorushoku_500/n/nf0392b6997f3
+- 投稿日時: 2026-05-08T07:02:57.511Z
+
 ※本記事にはAmazonアソシエイトリンクが含まれます
 ※Amazon.co.jpアソシエイト
 
